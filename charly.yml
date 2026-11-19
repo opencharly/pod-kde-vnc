@@ -233,17 +233,29 @@ check-kde-vnc-pod:
             # The input sequence is authored as the bed's own `check:` steps: a bed's
             # `run:` steps are verify-only in its check-live stage (skipped), so a
             # mutation the bed needs must live in a check step (/charly-check:check).
-            - check: a Konsole opens inside the Plasma session and takes keyboard focus
+            - check: a Konsole is launched inside the Plasma session
               id: bed-open-konsole
               context: [runtime]
               command:
                 command: |
                   WAYLAND_DISPLAY=wayland-kde XDG_RUNTIME_DIR=/tmp setsid konsole >/dev/null 2>&1 < /dev/null &
-                  for i in $(seq 1 30); do pgrep -x konsole >/dev/null && break; sleep 1; done
-                  sleep 3
-                  pgrep -x konsole
+                  echo launched
                 in_container: true
               exit_status: 0
+            # The sync primitive for "keystrokes will reach Konsole": KWin itself reports
+            # Konsole as its ACTIVE window (kdotool, over KWin's D-Bus scripting), polled
+            # under a bounded window — no fixed delay.
+            - check: KWin reports the Konsole as its active window, so VNC keystrokes reach it
+              id: bed-konsole-focused
+              context: [runtime]
+              eventually: 60s
+              retry_interval: 2s
+              exit_status: 0
+              stdout:
+                  - contains: Konsole
+              command:
+                command: KDE_SESSION_VERSION=6 kdotool getactivewindow getwindowname
+                in_container: true
             - check: a command is typed into the Konsole through VNC key events
               id: bed-vnc-type
               context: [runtime]
