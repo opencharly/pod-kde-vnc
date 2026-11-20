@@ -14,22 +14,24 @@ description: 'The pod-kde-vnc GPU pod: a fullscreen, hardware-accelerated KDE Pl
 | base image | `podcdi.pod-cdi` | CachyOS; the GPU driver is injected from the host through CDI |
 | outer compositor | `pod-sway` | headless sway 1.12; serves `wayland-1` with a `wayland-0` symlink; gles2 on the GPU |
 | VNC | `pod-wayvnc` | wayvnc 0.10.2 on `:5900`; no power-on workaround needed at 0.10.x |
-| desktop | `layer-kde-shell` | Plasma 6 without SDDM; `kdotool`, `spectacle` |
-| session | `kde-vnc-session` (this repo) | nested `kwin_wayland` + `plasmashell` |
+| session | `pod-kde-nested` (`kde-nested` service) | nested `kwin_wayland` + `plasmashell` (Plasma 6 without SDDM via `layer-kde-shell`; `kdotool`, `spectacle`) |
+| this repo | `kde-vnc-session` candy | composes the above, sets `KDE_NESTED_*` for sway's sockets, and the sway kiosk drop-in |
 
 ## How the session starts
 
-`kde-vnc-session` (supervisord service, priority 15):
+The `kde-nested` service is pod-kde-nested's shared launcher (`/charly-selkies:kde-nested`).
+This pod sets the following knobs:
+- `KDE_NESTED_HOST_DISPLAY=wayland-0` (sway);
+- `KDE_NESTED_SOCKET=wayland-kde`;
+- `KDE_NESTED_RUNTIME_DIR=/tmp`;
+- `KDE_NESTED_RESOLUTION=1920x1080`;
+- `KDE_NESTED_BUS=session`.
 
-1. waits for `$XDG_RUNTIME_DIR/$KDE_NESTED_HOST_DISPLAY` (default `wayland-0`, sway);
-2. starts `kwin_wayland --wayland-display <host> --socket wayland-kde --xwayland --width W --height H`;
-3. starts `plasmashell` on `wayland-kde`;
-4. lives as long as KWin does (supervisord restarts the whole session).
-
-It exports `KDE_SESSION_VERSION=6`: nothing else sets it in a pod, and `kdotool` refuses to
-run without it. `kwin_wayland` has its `cap_sys_nice` stripped at build, because the pod's
-no-new-privileges refuses to exec a file-capability binary. A cap-less **copy** does not
-work: KWin then cannot load its built-in Qt platform plugin.
+The launcher waits for sway's socket, then starts `kwin_wayland --wayland-display wayland-0
+--socket wayland-kde --xwayland --width 1920 --height 1080` and then `plasmashell`. It exports
+`KDE_SESSION_VERSION=6`, which kdotool needs, and pod-kde-nested strips `cap_sys_nice` from
+`kwin_wayland` at build, because the pod's no-new-privileges refuses a file-capability
+binary.
 
 ## Fullscreen and keyboard
 

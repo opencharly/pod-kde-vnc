@@ -26,98 +26,50 @@ kde-vnc-session:
         description: |
             A full KDE Plasma session nested in the pod's headless sway as one fullscreen,
             borderless window, so wayvnc's VNC stream shows Plasma.
-            Composes the headless sway compositor (pod-sway), the VNC server (pod-wayvnc), the
-            SDDM-free Plasma package set (layer-kde-shell) and the session bus (pod-dbus via
-            those). Installs the kde-vnc-session launcher, which waits for sway's socket and
-            starts kwin_wayland NESTED (--wayland-display <sway> --socket wayland-kde) plus
-            plasmashell on KWin's socket; a sway drop-in that fullscreens the KWin window and
-            starts sway in passthrough mode so Plasma owns the keyboard; and strips
-            cap_sys_nice from kwin_wayland so it execs under the pod's no-new-privileges.
-            Every claim is observable: the files and the stripped capability at build time,
-            and at runtime the RUNNING session, the fullscreen KWin window in sway's tree, a
-            hardware OpenGL renderer in KWin, a VNC frame of the desktop, and VNC keystrokes
-            reaching a Plasma application.
+            Composes the headless sway compositor (pod-sway), the VNC server (pod-wayvnc) and
+            the nested Plasma session (pod-kde-nested -- the shared kde-nested service, its
+            launcher and its kwin_wayland caps strip), pointing KWin at sway's wayland-0
+            with its own wayland-kde socket at 1920x1080. Installs a sway drop-in that
+            fullscreens the KWin window and starts sway in passthrough mode so Plasma owns the
+            keyboard. Every claim is observable: the drop-in at build time, and at runtime the
+            RUNNING session, the fullscreen KWin window in sway's tree, a hardware OpenGL
+            renderer in KWin, a VNC frame of the desktop, and VNC keystrokes reaching a
+            Plasma application.
         require:
             - '@github.com/opencharly/pod-sway:v2026.314.0718'
             - '@github.com/opencharly/pod-wayvnc:v2026.323.1735'
-            - '@github.com/opencharly/layer-kde-shell:v2026.314.0707'
+            # The nested Plasma session: one launcher for every nested KDE pod (R2).
+            - '@github.com/opencharly/pod-kde-nested:main'
             # plugin-vnc serves the `vnc:` check verb this candy authors.
             - '@github.com/opencharly/plugin-vnc/candy/plugin-vnc:v2026.314.0716'
         env:
             RESOLUTION: "1920x1080"
+            # pod-kde-nested's knobs for this pod's socket layout: KWin nests in sway's
+            # wayland-0 and serves wayland-kde (pod-sway's sway serves wayland-1 behind its
+            # wayland-0 symlink, so a numbered KWin socket would collide).
+            KDE_NESTED_HOST_DISPLAY: wayland-0
+            KDE_NESTED_SOCKET: wayland-kde
+            KDE_NESTED_RUNTIME_DIR: /tmp
+            KDE_NESTED_RESOLUTION: "1920x1080"
+            KDE_NESTED_BUS: session
         env_accept:
             - name: RESOLUTION
-              description: "WxH of the sway output and the nested Plasma session. Default: 1920x1080"
-        service:
-            - name: kde-vnc-session
-              exec: "%(ENV_HOME)s/.local/bin/kde-vnc-session"
-              env:
-                XDG_RUNTIME_DIR: /tmp
-              restart: always
-              priority: 15
-              start_sec: 3
-              enable: true
-              scope: system
+              description: "WxH of the sway output. Default: 1920x1080"
         plan:
-            - run: mkdir=${HOME}/.local/bin
-              mkdir: "${HOME}/.local/bin"
-              run_as: "${USER}"
             - run: mkdir=${HOME}/.config/sway/config.d
               mkdir: "${HOME}/.config/sway/config.d"
-              run_as: "${USER}"
-            - run: copy=kde-vnc-session
-              copy: kde-vnc-session
-              to: "${HOME}/.local/bin/kde-vnc-session"
-              mode: "0755"
               run_as: "${USER}"
             - run: copy=kde-vnc.conf
               copy: kde-vnc.conf
               to: "${HOME}/.config/sway/config.d/kde-vnc.conf"
               mode: "0644"
               run_as: "${USER}"
-            - run: strip cap_sys_nice from kwin_wayland so it execs as a nested compositor under the pod's no-new-privileges
-              id: kde-vnc-strip-caps
-              run_as: root
-              command: |
-                setcap -r /usr/bin/kwin_wayland
-            - check: the kde-vnc-session launcher is installed and executable
-              file:
-                file: ${HOME}/.local/bin/kde-vnc-session
-                exists: true
-                mode: "0755"
-            - check: the launcher starts KWin nested in the host compositor and serving its own socket
-              file:
-                file: ${HOME}/.local/bin/kde-vnc-session
-                contains:
-                    - contains: 'kwin_wayland --wayland-display "$HOST" --socket "$SOCK"'
             - check: the sway drop-in fullscreens the nested KWin window by its title and starts passthrough mode
               file:
                 file: ${HOME}/.config/sway/config.d/kde-vnc.conf
                 contains:
                     - contains: 'for_window [title="^KDE Wayland Compositor"] fullscreen enable'
                     - contains: "exec_always swaymsg mode passthrough"
-            - check: kwin_wayland carries no file capability, so it execs under no-new-privileges
-              id: kde-vnc-kwin-no-caps
-              exit_status: 0
-              command: |
-                caps=$(getcap /usr/bin/kwin_wayland 2>/dev/null)
-                if [ -n "$caps" ]; then echo "kwin_wayland still has caps: $caps"; exit 1; fi
-                echo "no caps"
-            - check: the nested Plasma session runs under supervisord
-              id: kde-vnc-session-running
-              context: [runtime]
-              service:
-                service: kde-vnc-session
-                running: true
-            - check: plasmashell is running on KWin's socket
-              id: kde-vnc-plasmashell
-              context: [runtime]
-              eventually: 90s
-              retry_interval: 3s
-              exit_status: 0
-              command:
-                command: pgrep -x plasmashell
-                in_container: true
 
 kde-vnc:
     candy:
@@ -171,7 +123,7 @@ check-kde-vnc-pod:
             wayvnc streams a 1920x1080 frame; and VNC key events typed into a Konsole run a
             command inside the pod.
         plan:
-            - check: sway, wayvnc and the Plasma session are all RUNNING under supervisord
+            - check: sway, wayvnc and the nested Plasma session are all RUNNING under supervisord
               id: bed-services
               context: [runtime]
               eventually: 60s
@@ -180,7 +132,7 @@ check-kde-vnc-pod:
               stdout:
                   - equals: RUNNING
               command:
-                command: supervisorctl status sway wayvnc kde-vnc-session | awk '{print $2}' | sort -u
+                command: supervisorctl status sway wayvnc kde-nested | awk '{print $2}' | sort -u
                 in_container: true
             - check: the nested KWin window is fullscreen in sway
               id: bed-kwin-fullscreen
