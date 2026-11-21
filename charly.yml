@@ -28,7 +28,7 @@ import:
     # pod-cdi >= v2026.324.1644 resolves that same distro-arch generation, so the direct and
     # the transitive namespace agree.
     - arch: '@github.com/opencharly/distro-arch:v2026.325.1112'
-    - podcdi: '@github.com/opencharly/pod-cdi:v2026.324.1644'
+    - podcdi: '@github.com/opencharly/pod-cdi:v2026.325.1329'
 
 kde-vnc-session:
     candy:
