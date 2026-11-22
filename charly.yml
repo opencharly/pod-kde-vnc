@@ -60,11 +60,15 @@ kde-vnc-session:
             KDE_NESTED_HOST_DISPLAY: wayland-0
             KDE_NESTED_SOCKET: wayland-kde
             KDE_NESTED_RUNTIME_DIR: /tmp
-            KDE_NESTED_RESOLUTION: "1920x1080"
+            # NO KDE_NESTED_RESOLUTION: empty means KWin takes the size of the output it is
+            # nested in, so ONE knob sizes both — the documented `RESOLUTION` below sets
+            # sway's output and the nested session follows it. A second literal here would
+            # let a consumer override `RESOLUTION` and get a sway output and a KWin window
+            # of different sizes, with no way to fix it.
             KDE_NESTED_BUS: session
         env_accept:
             - name: RESOLUTION
-              description: "WxH of the sway output. Default: 1920x1080"
+              description: "WxH of the sway output, and so of the nested Plasma session that fills it. Default: 1920x1080"
         plan:
             - run: mkdir=${HOME}/.config/sway/config.d
               mkdir: "${HOME}/.config/sway/config.d"
