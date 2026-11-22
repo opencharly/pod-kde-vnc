@@ -49,7 +49,7 @@ kde-vnc-session:
             - '@github.com/opencharly/pod-sway:v2026.314.0718'
             - '@github.com/opencharly/pod-wayvnc:v2026.323.1735'
             # The nested Plasma session: one launcher for every nested KDE pod (R2).
-            - '@github.com/opencharly/pod-kde-nested:main'
+            - '@github.com/opencharly/pod-kde-nested:v2026.326.2127'
             # plugin-vnc serves the `vnc:` check verb this candy authors.
             - '@github.com/opencharly/plugin-vnc/candy/plugin-vnc:v2026.314.0716'
         env:
