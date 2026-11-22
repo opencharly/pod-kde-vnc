@@ -18,8 +18,18 @@
 import:
     # A builder map does NOT cross a namespace boundary: a box composed here declares its
     # own (kdotool, via layer-kde-shell, is an AUR package). Same pin pod-cdi uses.
-    - arch: '@github.com/opencharly/distro-arch:v2026.274.1256'
-    - podcdi: '@github.com/opencharly/pod-cdi:v2026.322.1717'
+    # Both pins are import pins, not content: they exist to reach distro-arch's builder map
+    # and pod-cdi's `pod-cdi` base. They must therefore stay new enough that the WHOLE
+    # imported namespace LOADS under the charly binary the umbrella pins — a stale import
+    # makes every project that imports this one unloadable (opencharly/pod-kde-vnc#3).
+    # distro-arch must be >= v2026.324.0908 (distro-arch#74 nests `check-arch-vm`'s members
+    # inside the bed's venue); v2026.326.1455 is the release where `aur` is a ROUTED BUILDER
+    # rather than a box `build:` format (distro-arch#77, opencharly/sdk#608), so its
+    # `arch-test` carries `build: [pac]` and the builder map this import exists for.
+    # pod-cdi >= v2026.326.1530 is the release built on that same distro-arch generation, so
+    # the direct and the transitive namespace agree.
+    - arch: '@github.com/opencharly/distro-arch:v2026.326.1455'
+    - podcdi: '@github.com/opencharly/pod-cdi:v2026.326.1530'
 
 kde-vnc-session:
     candy:
@@ -82,7 +92,6 @@ kde-vnc:
             - linux/amd64
         build:
             - pac
-            - aur
         builder:
             aur: arch.arch-builder
             cargo: arch.arch-builder
