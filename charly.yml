@@ -139,7 +139,6 @@ kde-vnc:
             - linux/amd64
         build:
             - pac
-            - aur
         builder:
             aur: arch.arch-builder
             cargo: arch.arch-builder
