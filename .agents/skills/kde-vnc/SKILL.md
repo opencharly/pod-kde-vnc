@@ -24,11 +24,16 @@ This pod sets the following knobs:
 - `KDE_NESTED_HOST_DISPLAY=wayland-0` (sway);
 - `KDE_NESTED_SOCKET=wayland-kde`;
 - `KDE_NESTED_RUNTIME_DIR=/tmp`;
-- `KDE_NESTED_RESOLUTION=1920x1080`;
 - `KDE_NESTED_BUS=session`.
 
+It deliberately sets **no** `KDE_NESTED_RESOLUTION`: empty means KWin takes the size of the
+output it is nested in, so `RESOLUTION` — this pod's one documented knob — sizes the sway
+output AND the fullscreen Plasma session that fills it. Setting a second geometry here would
+let a consumer override `RESOLUTION` and get a sway output and a KWin window of different
+sizes.
+
 The launcher waits for sway's socket, then starts `kwin_wayland --wayland-display wayland-0
---socket wayland-kde --xwayland --width 1920 --height 1080` and then `plasmashell`. It exports
+--socket wayland-kde --xwayland` (no size flags, so it fills the output) and then `plasmashell`. It exports
 `KDE_SESSION_VERSION=6`, which kdotool needs, and pod-kde-nested strips `cap_sys_nice` from
 `kwin_wayland` at build, because the pod's no-new-privileges refuses a file-capability
 binary.
