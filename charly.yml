@@ -39,7 +39,7 @@ kde-vnc-session:
             Composes the headless sway compositor (pod-sway), the VNC server (pod-wayvnc) and
             the nested Plasma session (pod-kde-nested -- the shared kde-nested service, its
             launcher and its kwin_wayland caps strip), pointing KWin at sway's wayland-0
-            with its own wayland-kde socket at 1920x1080. Installs a sway drop-in that
+            with its own wayland-kde socket, filling sway's output (sized by the single `RESOLUTION` knob). Installs a sway drop-in that
             fullscreens the KWin window and starts sway in passthrough mode so Plasma owns the
             keyboard. Every claim is observable: the drop-in at build time, and at runtime the
             RUNNING session, the fullscreen KWin window in sway's tree, a hardware OpenGL
