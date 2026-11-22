@@ -15,8 +15,8 @@ sway (headless)  ── wayland-0 ──►  wayvnc  ── :5900 ──►  you
   [pod-sway](https://github.com/opencharly/pod-sway)), the latest upstream release.
 - **VNC:** wayvnc 0.10.2 (from [pod-wayvnc](https://github.com/opencharly/pod-wayvnc)),
   the latest upstream release.
-- **Desktop:** KDE Plasma 6 without SDDM (from
-  [layer-kde-shell](https://github.com/opencharly/layer-kde-shell)), nested in sway as one
+- **Desktop:** KDE Plasma 6 without SDDM, as the shared nested session of
+  [pod-kde-nested](https://github.com/opencharly/pod-kde-nested), nested in sway as one
   fullscreen, borderless window. sway runs in passthrough mode, so every key reaches
   Plasma (`Alt+Pause` leaves passthrough).
 
