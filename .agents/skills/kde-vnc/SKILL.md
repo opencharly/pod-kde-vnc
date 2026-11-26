@@ -38,6 +38,32 @@ The launcher waits for sway's socket, then starts `kwin_wayland --wayland-displa
 `kwin_wayland` at build, because the pod's no-new-privileges refuses a file-capability
 binary.
 
+## The ambient session — the image's default, and when to name it
+
+The pod sets the **image's** session environment, so anything started inside it without an
+override joins Plasma:
+
+- `WAYLAND_DISPLAY=wayland-kde` — the socket users actually see. pod-sway's candy sets
+  `wayland-0` for ITS clients, but that is the compositor BEHIND the fullscreen Plasma window:
+  a window drawn there is invisible in the VNC stream. This pod overrides it.
+- `KDE_SESSION_VERSION=6` — what every KDE client, and `kdotool`, expect.
+
+**It is a DEFAULT, not a guarantee — a check step must still name its display.** A check step's
+in-container command environment carries the OPERATOR's environment (measured: a runner on a
+Wayland desktop leaked its own `WAYLAND_DISPLAY` into the container, so `setsid konsole` inherited
+a socket that does not exist inside the pod and never opened a window). The bed therefore writes
+`WAYLAND_DISPLAY=wayland-kde` on the Konsole launch and `KDE_SESSION_VERSION=6` on the `kdotool`
+call: not a workaround, but the explicit statement of which session the step targets.
+
+Other consequences:
+
+- **sway and wayvnc keep their own** service-level `WAYLAND_DISPLAY=wayland-0`: a service must not
+  depend on ambient drift, and those two must reach the compositor socket, not the session one.
+  `kde-nested` uses the `KDE_NESTED_*` knobs instead.
+- The image's own values are checkable HOST-side (`podman image inspect … .Config.Env`), not from a
+  check step: `charly check image` runs its probes with the host environment forwarded, so an
+  in-image `printenv WAYLAND_DISPLAY` reports the runner, not the image (measured).
+
 ## Fullscreen and keyboard
 
 The nested KWin window has **no app_id**. Its title is
