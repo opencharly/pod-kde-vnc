@@ -41,10 +41,13 @@ kde-vnc-session:
             launcher and its kwin_wayland caps strip), pointing KWin at sway's wayland-0
             with its own wayland-kde socket, filling sway's output (sized by the single `RESOLUTION` knob). Installs a sway drop-in that
             fullscreens the KWin window and starts sway in passthrough mode so Plasma owns the
-            keyboard. Every claim is observable: the drop-in at build time, and at runtime the
+            keyboard. Sets the ambient session environment (`WAYLAND_DISPLAY=wayland-kde`,
+            `KDE_SESSION_VERSION=6`) so any client launched inside joins the Plasma session with
+            no restatement -- the compositor socket behind the fullscreen window is not it.
+            Every claim is observable: the drop-in at build time, and at runtime the
             RUNNING session, the fullscreen KWin window in sway's tree, a hardware OpenGL
-            renderer in KWin, a VNC frame of the desktop, and VNC keystrokes reaching a
-            Plasma application.
+            renderer in KWin, a VNC frame of the desktop, the ambient session pair, and VNC
+            keystrokes reaching a Plasma application.
         require:
             - '@github.com/opencharly/pod-sway:v2026.314.0718'
             - '@github.com/opencharly/pod-wayvnc:v2026.323.1735'
@@ -66,6 +69,17 @@ kde-vnc-session:
             # let a consumer override `RESOLUTION` and get a sway output and a KWin window
             # of different sizes, with no way to fix it.
             KDE_NESTED_BUS: session
+            # The AMBIENT session: what a client launched inside this pod (a `charly shell`
+            # command, a check step, Chrome) should join WITHOUT restating anything. pod-sway's
+            # candy sets WAYLAND_DISPLAY=wayland-0 for its own clients, but that socket is the
+            # compositor BEHIND the fullscreen Plasma window — a window there is invisible. So
+            # the pod overrides it to the session users actually see, and adds the session
+            # version every KDE client (and kdotool) expects. sway and wayvnc keep their own
+            # service-level WAYLAND_DISPLAY=wayland-0 (a service must not depend on ambient
+            # drift), and kde-nested uses the KDE_NESTED_* knobs above — so nothing that needs
+            # the compositor socket moves.
+            WAYLAND_DISPLAY: wayland-kde
+            KDE_SESSION_VERSION: "6"
         env_accept:
             - name: RESOLUTION
               description: "WxH of the sway output, and so of the nested Plasma session that fills it. Default: 1920x1080"
@@ -147,6 +161,23 @@ check-kde-vnc-pod:
               command:
                 command: supervisorctl status sway wayvnc kde-nested | awk '{print $2}' | sort -u
                 in_container: true
+            # The changed path, asserted where it is observable. /proc/1/environ is the CONTAINER's
+            # environment (image + deploy), NOT this command's: a check step inherits the operator's
+            # env — measured, the runner's own WAYLAND_DISPLAY reaches the container — so reading
+            # $WAYLAND_DISPLAY would measure the runner and pass on the unchanged tree. This step
+            # FAILS on main (the container carries pod-sway's wayland-0) and passes only once the
+            # session candy declares the pair.
+            - check: the CONTAINER's own environment names the Plasma session, so anything the pod starts joins it by default
+              id: bed-container-session-env
+              context: [runtime]
+              exit_status: 0
+              stdout:
+                  - contains: WAYLAND_DISPLAY=wayland-kde
+                  - contains: KDE_SESSION_VERSION=6
+              command:
+                  command: |
+                      tr '\0' '\n' < /proc/1/environ | grep -E '^(WAYLAND_DISPLAY|KDE_SESSION_VERSION)='
+                  in_container: true
             - check: the nested KWin window is fullscreen in sway
               id: bed-kwin-fullscreen
               context: [runtime]
@@ -201,6 +232,9 @@ check-kde-vnc-pod:
             - check: a Konsole is launched inside the Plasma session
               id: bed-open-konsole
               context: [runtime]
+              # The display is named, not inherited: a check step's command environment carries the
+              # OPERATOR's WAYLAND_DISPLAY (measured — a runner on a Wayland desktop leaks its own
+              # value into the container), so a client that must land in Plasma says so.
               command:
                 command: |
                   WAYLAND_DISPLAY=wayland-kde XDG_RUNTIME_DIR=/tmp setsid konsole >/dev/null 2>&1 < /dev/null &

@@ -32,6 +32,13 @@ Canonical files:
   This repo only sets its `KDE_NESTED_*` knobs. The KWin socket must not be numbered
   (`wayland-kde`), because pod-sway's sway serves `wayland-1` behind its `wayland-0`
   symlink.
+- **The ambient session env is the pod's DEFAULT, and a check step still names its display.**
+  `kde-vnc-session` sets `WAYLAND_DISPLAY=wayland-kde` and `KDE_SESSION_VERSION=6` for the image,
+  so anything started inside joins Plasma by default — but a check step's command environment
+  carries the OPERATOR's env (measured: the runner's own `WAYLAND_DISPLAY` leaked in and a
+  `setsid konsole` never opened). The bed's Konsole and `kdotool` steps therefore name the session
+  explicitly. Never move the pair onto the sway/wayvnc services: those must reach the compositor
+  socket, not the session one.
 - **Keyboard input in the bed goes through `vnc:`**, never `wl: type`: `wtype` uploads a
   private keymap that the nested KWin re-maps (measured: typed text arrives garbled).
 - **R10 gate:** `charly check run check-kde-vnc-pod` on a host with a GPU exposed through
