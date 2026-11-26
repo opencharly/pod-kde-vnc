@@ -161,6 +161,23 @@ check-kde-vnc-pod:
               command:
                 command: supervisorctl status sway wayvnc kde-nested | awk '{print $2}' | sort -u
                 in_container: true
+            # The changed path, asserted where it is observable. /proc/1/environ is the CONTAINER's
+            # environment (image + deploy), NOT this command's: a check step inherits the operator's
+            # env — measured, the runner's own WAYLAND_DISPLAY reaches the container — so reading
+            # $WAYLAND_DISPLAY would measure the runner and pass on the unchanged tree. This step
+            # FAILS on main (the container carries pod-sway's wayland-0) and passes only once the
+            # session candy declares the pair.
+            - check: the CONTAINER's own environment names the Plasma session, so anything the pod starts joins it by default
+              id: bed-container-session-env
+              context: [runtime]
+              exit_status: 0
+              stdout:
+                  - contains: WAYLAND_DISPLAY=wayland-kde
+                  - contains: KDE_SESSION_VERSION=6
+              command:
+                  command: |
+                      tr '\0' '\n' < /proc/1/environ | grep -E '^(WAYLAND_DISPLAY|KDE_SESSION_VERSION)='
+                  in_container: true
             - check: the nested KWin window is fullscreen in sway
               id: bed-kwin-fullscreen
               context: [runtime]
