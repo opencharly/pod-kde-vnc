@@ -28,8 +28,8 @@ import:
     # `arch-test` carries `build: [pac]` and the builder map this import exists for.
     # pod-cdi >= v2026.326.1530 is the release built on that same distro-arch generation, so
     # the direct and the transitive namespace agree.
-    - arch: '@github.com/opencharly/distro-arch:v2026.326.1455'
-    - podcdi: '@github.com/opencharly/pod-cdi:v2026.326.1530'
+    - arch: '@github.com/opencharly/distro-arch:v2026.330.1808'
+    - podcdi: '@github.com/opencharly/pod-cdi:v2026.330.1230'
 
 kde-vnc-session:
     candy:
@@ -49,12 +49,12 @@ kde-vnc-session:
             renderer in KWin, a VNC frame of the desktop, the ambient session pair, and VNC
             keystrokes reaching a Plasma application.
         require:
-            - '@github.com/opencharly/pod-sway:v2026.314.0718'
+            - '@github.com/opencharly/pod-sway:v2026.328.1647'
             - '@github.com/opencharly/pod-wayvnc:v2026.323.1735'
             # The nested Plasma session: one launcher for every nested KDE pod (R2).
-            - '@github.com/opencharly/pod-kde-nested:v2026.326.2127'
+            - '@github.com/opencharly/pod-kde-nested:v2026.331.1638'
             # plugin-vnc serves the `vnc:` check verb this candy authors.
-            - '@github.com/opencharly/plugin-vnc/candy/plugin-vnc:v2026.314.0716'
+            - '@github.com/opencharly/plugin-vnc/candy/plugin-vnc:v2026.331.1105'
         env:
             RESOLUTION: "1920x1080"
             # pod-kde-nested's knobs for this pod's socket layout: KWin nests in sway's
